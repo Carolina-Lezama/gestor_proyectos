@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pms-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: pms_database
+    ports:
+      - "5434:5432"
+    volumes:
+      - pms-data:/var/lib/postgresql/data
+
+volumes:
+  pms-data:
