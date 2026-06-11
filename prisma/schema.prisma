@@ -1,13 +1,120 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// Enums para mantener la consistencia de datos
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// 1. Modelo de Usuario
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  workspaces WorkspaceMember[]
+  tasks      Task[]            @relation("AssignedTasks")
+  comments   Comment[]
+}
+
+// 2. Modelo de Espacio de Trabajo (Organización/Equipo)
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  members  WorkspaceMember[]
+  projects Project[]
+}
+
+// 3. Tabla intermedia para manejar Roles de Usuarios en cada Workspace
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  role        Role     @default(MEMBER)
+  joinedAt    DateTime @default(now())
+
+  // Relaciones
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId]) // Un usuario solo puede tener un registro por workspace
+}
+
+// 4. Modelo de Proyecto
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+}
+
+// 5. Modelo de Tarea (El núcleo del Kanban)
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Orden en el tablero Kanban (crucial para el Drag & Drop)
+  position    Int        @default(0)
+
+  // Relaciones
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assigneeId  String?
+  assignee    User?     @relation("AssignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+  comments    Comment[]
+}
+
+// 6. Modelo de Comentarios (Interacción en la tarea)
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
