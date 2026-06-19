@@ -1,32 +1,18 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, LayoutDashboard } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { LandingNavbar } from "@/components/shared/LandingNavbar";
+import { LandingFooter } from "@/components/shared/LandingFooter";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
-      {/* Navegación Superior */}
-      <header className="px-8 h-16 flex items-center justify-between border-b border-slate-100 bg-white/80 backdrop-blur-md fixed top-0 w-full z-50">
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="w-6 h-6 text-blue-600" />
-          <span className="text-xl font-bold text-slate-900 tracking-tight">TaskFlow Pro</span>
-        </div>
-        <div className="flex gap-4">
-          <Link href="/login">
-            <Button variant="ghost" className="font-medium text-slate-600 hover:text-slate-900">
-              Iniciar Sesión
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button className="font-medium bg-blue-600 hover:bg-blue-700">
-              Ir al Dashboard
-            </Button>
-          </Link>
-        </div>
-      </header>
+      
+      {/* 1. Componente Extraído */}
+      <LandingNavbar />
 
-      {/* Sección Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-32 pb-20">
+      {/* 2. Contenido Central (Hero) */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-32 pb-10">
         <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm text-blue-600 mb-8 font-medium">
           <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2"></span>
           Versión 1.0 ya disponible
@@ -78,10 +64,9 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* Footer Simple */}
-      <footer className="border-t border-slate-100 py-8 text-center text-slate-500 text-sm">
-        <p>© 2026 TaskFlow Pro. Proyecto de Arquitectura de Software.</p>
-      </footer>
+      {/* 3. Componente Extraído */}
+      <LandingFooter />
+      
     </div>
   );
 }
