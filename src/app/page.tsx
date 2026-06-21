@@ -3,15 +3,19 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { LandingNavbar } from "@/components/shared/LandingNavbar";
 import { LandingFooter } from "@/components/shared/LandingFooter";
+import { auth } from "@/auth"; // <-- Importamos auth aquí también
 
-export default function LandingPage() {
+// Convertimos la página en async
+export default async function LandingPage() {
+  // Leemos la sesión
+  const session = await auth();
+  const isLoggedIn = !!session;
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
       
-      {/* 1. Componente Extraído */}
       <LandingNavbar />
 
-      {/* 2. Contenido Central (Hero) */}
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-32 pb-10">
         <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm text-blue-600 mb-8 font-medium">
           <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2"></span>
@@ -26,20 +30,30 @@ export default function LandingPage() {
           La plataforma definitiva para equipos técnicos. Planifica flujos de trabajo, rastrea tareas en tiempo real y entrega resultados sin fricciones.
         </p>
         
+        {/* Renderizado condicional de los botones principales */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <Link href="/dashboard">
-            <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-slate-900 hover:bg-slate-800 gap-2">
-              Probar prototipo <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base">
-              Crear cuenta gratis
-            </Button>
-          </Link>
+          {isLoggedIn ? (
+            <Link href="/dashboard">
+              <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-blue-600 hover:bg-blue-700 gap-2">
+                Ir a mi Dashboard <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/register">
+                <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-slate-900 hover:bg-slate-800 gap-2">
+                  Comenzar gratis <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base">
+                  Iniciar Sesión
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Tarjetas de Características */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 max-w-5xl w-full text-left">
           {[
             {
@@ -64,7 +78,6 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* 3. Componente Extraído */}
       <LandingFooter />
       
     </div>
