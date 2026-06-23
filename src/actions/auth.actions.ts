@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { signIn } from "@/auth";
+import { signIn, signOut } from "@/auth"; // <-- Aquí agregamos signOut
 import { AuthError } from "next-auth";
 
 // Acción 1: Inserción de Usuario (Registro)
@@ -54,4 +54,9 @@ export async function loginUser(formData: FormData) {
     // Next.js usa throw para manejar las redirecciones internas, no lo captures
     throw error;
   }
+}
+
+// Acción 3: Cerrar Sesión (Logout)
+export async function logoutUser() {
+  await signOut({ redirectTo: "/" });
 }

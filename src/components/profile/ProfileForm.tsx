@@ -1,31 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateUserProfile } from "@/actions/user.actions";
 
-// Definimos la interfaz estricta basada en tu modelo de Prisma
+// Actualizamos la interfaz para recibir los nuevos campos de la BD
 interface UserProps {
   user: {
     id: string;
     name: string | null;
     email: string;
     avatarUrl: string | null;
+    phone?: string | null; // Nuevo campo opcional
+    city?: string | null;  // Nuevo campo opcional
   };
 }
 
 export function ProfileForm({ user }: UserProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  
+  // Estado para la previsualización de la imagen seleccionada
+  const [imagePreview, setImagePreview] = useState<string | null>(user.avatarUrl);
+  // Referencia para activar el input de archivo oculto
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Generador de iniciales dinámicas (Ej. "Carolina Carrera" -> "CC")
   const getInitials = (name: string | null) => {
     if (!name) return "U";
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2);
+  };
+
+  // Manejador para previsualizar la imagen antes de subirla
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Creamos una URL temporal en el navegador para mostrarla
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+    }
   };
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -34,6 +50,9 @@ export function ProfileForm({ user }: UserProps) {
     setMessage(null);
 
     const formData = new FormData(event.currentTarget);
+    
+    // Aquí formData ya incluye el archivo de la imagen (bajo el nombre 'avatar') 
+    // y los nuevos campos 'phone' y 'city' listos para enviarse al Server Action.
     const result = await updateUserProfile(formData);
 
     if (result.error) {
@@ -66,8 +85,12 @@ export function ProfileForm({ user }: UserProps) {
               </div>
             )}
 
+            {/* Sección de Avatar con selector de archivos */}
             <div className="flex items-center gap-6">
               <Avatar className="h-24 w-24 border-2 border-slate-100 shadow-sm">
+                {imagePreview ? (
+                  <AvatarImage src={imagePreview} alt="Profile preview" className="object-cover" />
+                ) : null}
                 <AvatarFallback className="text-3xl font-medium bg-blue-50 text-blue-700">
                   {getInitials(user.name)}
                 </AvatarFallback>
@@ -75,10 +98,32 @@ export function ProfileForm({ user }: UserProps) {
               <div className="space-y-2">
                 <h3 className="font-medium text-slate-900">Foto de perfil</h3>
                 <p className="text-sm text-slate-500 mb-2">Formatos recomendados: JPG, PNG. Tamaño máximo 2MB.</p>
-                <Button type="button" variant="outline" size="sm" className="font-medium">Cambiar Avatar</Button>
+                
+                {/* Input de archivo oculto */}
+                <input 
+                  type="file" 
+                  name="avatar"
+                  ref={fileInputRef} 
+                  onChange={handleImageChange} 
+                  accept="image/jpeg, image/png, image/webp" 
+                  className="hidden" 
+                />
+                
+                {/* Botón visual que dispara el input oculto */}
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="font-medium"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                >
+                  Cambiar Avatar
+                </Button>
               </div>
             </div>
 
+            {/* Grid de Formulario Expandido */}
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 <Label htmlFor="name" className="text-slate-700">Nombre Completo</Label>
@@ -97,6 +142,31 @@ export function ProfileForm({ user }: UserProps) {
                   defaultValue={user.email} 
                   disabled 
                   className="h-11 bg-slate-50 text-slate-500 cursor-not-allowed" 
+                />
+              </div>
+              
+              {/* Nuevos Campos */}
+              <div className="space-y-3">
+                <Label htmlFor="phone" className="text-slate-700">Teléfono</Label>
+                <Input 
+                  id="phone" 
+                  name="phone" 
+                  type="tel"
+                  placeholder="+52 123 456 7890"
+                  defaultValue={user.phone || ""} 
+                  className="h-11" 
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-3">
+                <Label htmlFor="city" className="text-slate-700">Ciudad de Residencia</Label>
+                <Input 
+                  id="city" 
+                  name="city" 
+                  placeholder="Ej. Puebla"
+                  defaultValue={user.city || ""} 
+                  className="h-11" 
+                  disabled={loading}
                 />
               </div>
             </div>

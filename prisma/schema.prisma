@@ -31,9 +31,11 @@ enum Priority {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String?  // <-- Agregamos este campo (opcional por si luego usamos Google/GitHub)
+  password  String?  
   name      String?
   avatarUrl String?
+  phone     String?  // <-- Nuevo campo para el teléfono
+  city      String?  // <-- Nuevo campo para la ciudad de residencia
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -41,6 +43,7 @@ model User {
   tasks      Task[]            @relation("AssignedTasks")
   comments   Comment[]
 }
+
 
 // 2. Modelo de Espacio de Trabajo (Organización/Equipo)
 model Workspace {

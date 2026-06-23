@@ -10,19 +10,20 @@ import {
   Users, 
   Settings, 
   BarChart3, 
-  Calendar 
+  Calendar,
+  LogOut // <-- 1. Agregamos el ícono de salida
 } from "lucide-react";
+import { logoutUser } from "@/actions/auth.actions"; // <-- 2. Importamos la acción de servidor
 
 export function DashboardSidebar() {
   const pathname = usePathname();
 
-  // Se agregaron rutas preparadas para escalar el producto
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/projects", icon: FolderKanban, label: "Proyectos" },
     { href: "/tasks", icon: CheckSquare, label: "Mis Tareas" },
-    { href: "/calendar", icon: Calendar, label: "Calendario" }, // <-- Futuro
-    { href: "/reports", icon: BarChart3, label: "Reportes" },   // <-- Futuro
+    { href: "/calendar", icon: Calendar, label: "Calendario" },
+    { href: "/reports", icon: BarChart3, label: "Reportes" },
     { href: "/workspaces", icon: Users, label: "Equipo" },
     { href: "/profile", icon: User, label: "Perfil" },
   ];
@@ -45,7 +46,7 @@ export function DashboardSidebar() {
                 href={item.href} 
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${
                   isActive 
-                    ? "bg-blue-50 text-blue-700" // Un azul más elegante para el activo
+                    ? "bg-blue-50 text-blue-700" 
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
@@ -55,14 +56,24 @@ export function DashboardSidebar() {
           })}
         </nav>
 
-        {/* Botón de configuración aislado al fondo */}
-        <div className="p-4 border-t border-slate-100">
+        {/* Zona inferior aislada */}
+        <div className="p-4 border-t border-slate-100 space-y-1">
           <Link 
             href="/settings" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
           >
             <Settings className="w-5 h-5" /> Configuración
           </Link>
+          
+          {/* 3. Formulario con el Server Action importado */}
+          <form action={logoutUser}>
+            <button 
+              type="submit" 
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+            >
+              <LogOut className="w-5 h-5" /> Cerrar Sesión
+            </button>
+          </form>
         </div>
       </div>
     </aside>
