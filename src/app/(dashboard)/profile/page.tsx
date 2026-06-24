@@ -20,6 +20,8 @@ export default async function ProfilePage() {
       name: true,
       email: true,
       avatarUrl: true,
+      phone: true, // <-- Ahora extraemos el teléfono
+      city: true,  // <-- Ahora extraemos la ciudad
     }
   });
 
@@ -30,3 +32,4 @@ export default async function ProfilePage() {
   // 3. Renderizamos el formulario interactivo inyectando los datos reales
   return <ProfileForm user={dbUser} />;
 }
+
