@@ -116,31 +116,8 @@ El Selector Global: ¿Recuerdas ese botón estático en la barra superior (Dashb
 
 - **Semilla (Seed):** Escribir un script en Prisma para poblar la base de datos con datos falsos (usuarios de prueba, proyectos aleatorios). Esto es vital para probar la interfaz sin tener que crear todo a mano.
 
-Paso 1: El "Contexto Activo" (Vincular la Barra Superior y el Botón "Entrar")
-Actualmente, cuando el usuario da clic en "Entrar al Espacio" en la tarjeta de un Workspace, el botón no hace nada. Necesitamos capturar ese ID.
 
-La Estrategia: Vamos a modificar la navegación para que al dar clic en un equipo, la URL cambie a algo como /dashboard?workspaceId=ID_DE_TU_WORKSPACE (o usar rutas dinámicas como /workspaces/[id]).
 
-El Beneficio: Al tener el ID en la URL, la barra superior (DashboardTopbar) podrá leerlo, buscar el nombre real en la base de datos (reemplazando el texto estático de "Data & Engineering Team") y el Sidebar podrá filtrar automáticamente los proyectos que pertenecen solo a ese equipo.
 
-Paso 2: La Estructura del Tablero Kanban (Componente de Servidor)
-Una vez que el sistema sabe qué proyecto está activo, crearemos la vista del tablero.
 
-La Estrategia: Crearemos una página donde leeremos de la base de datos todas las tareas filtradas por el projectId. Usaremos tu enum TaskStatus para agrupar las tareas en 4 columnas limpias en el servidor:
 
-TODO (Por hacer)
-
-IN_PROGRESS (En progreso)
-
-IN_REVIEW (En revisión)
-
-DONE (Terminado)
-
-El Beneficio: Al procesar y agrupar las tareas en el servidor mediante Prisma, el cliente solo recibirá los arrays estructurados, haciendo que la interfaz renderice de forma instantánea.
-
-Paso 3: El Server Action para Crear Tareas
-Antes de mover las tarjetas con Drag & Drop, necesitamos poder crearlas.
-
-La Estrategia: Diseñaremos un formulario rápido (un botón de "+" al final o arriba de cada columna) que dispare un Server Action llamado createTask(formData).
-
-El Beneficio: Al insertar la tarea, usaremos el campo position de tu esquema para colocarla automáticamente al final de la lista de esa columna.

@@ -1,145 +1,113 @@
-"use client";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { KanbanBoard } from "@/components/kanban/KanbanBoard";
+import { Card, CardContent } from "@/components/ui/card";
+import { FolderKanban, AlertCircle } from "lucide-react";
+import Link from "lucide-react";
 
-import { useState, useEffect, type CSSProperties } from "react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+interface DashboardProps {
+  searchParams: Promise<{
+    workspaceId?: string;
+    projectId?: string;
+  }>;
+}
 
-// 1. Nuestros datos semilla estructurados para Drag & Drop
-const initialData = {
-  tasks: {
-    "task-1": { id: "task-1", title: "Entrenar modelo base de regresión", priority: "Media", dep: "DATA SCIENCE", color: "text-blue-600" },
-    "task-2": { id: "task-2", title: "Diseñar esquema relacional", priority: "Urgente", dep: "DATABASE", color: "text-amber-600" },
-    "task-3": { id: "task-3", title: "Extraer y limpiar dataset de Olist", priority: "Alta", dep: "DATA ENG", color: "text-emerald-600" },
-  },
-  columns: {
-    "TODO": { id: "TODO", title: "Por Hacer", taskIds: ["task-1"] },
-    "IN_PROGRESS": { id: "IN_PROGRESS", title: "En Progreso", taskIds: ["task-2"] },
-    "DONE": { id: "DONE", title: "Completado", taskIds: ["task-3"] },
-  },
-  columnOrder: ["TODO", "IN_PROGRESS", "DONE"],
-};
+export default async function DashboardPage({ searchParams }: DashboardProps) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
 
-export default function DashboardPage() {
-  const [data, setData] = useState(initialData);
-  const [isMounted, setIsMounted] = useState(false);
+  const params = await searchParams;
+  let activeWorkspaceId = params.workspaceId;
 
-  // Truco Senior: Prevenir errores de hidratación en Next.js
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // 2. La lógica del motor de física al soltar la tarjeta
-  const onDragEnd = (result: any) => {
-    const { destination, source, draggableId } = result;
-
-    // Si la soltó fuera del tablero, no hacemos nada
-    if (!destination) return;
-
-    // Si la soltó exactamente en el mismo lugar, no hacemos nada
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
-
-    const startColumn = data.columns[source.droppableId as keyof typeof data.columns];
-    const finishColumn = data.columns[destination.droppableId as keyof typeof data.columns];
-
-    // Movimiento dentro de la misma columna
-    if (startColumn === finishColumn) {
-      const newTaskIds = Array.from(startColumn.taskIds);
-      newTaskIds.splice(source.index, 1);
-      newTaskIds.splice(destination.index, 0, draggableId);
-
-      const newColumn = { ...startColumn, taskIds: newTaskIds };
-      setData({ ...data, columns: { ...data.columns, [newColumn.id]: newColumn } });
-      return;
+  // 1. Si el usuario entra al raíz sin especificar equipo, buscamos su primer espacio disponible
+  if (!activeWorkspaceId) {
+    const firstWorkspace = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id },
+      select: { workspaceId: true }
+    });
+    
+    if (firstWorkspace) {
+      activeWorkspaceId = firstWorkspace.workspaceId;
+    } else {
+      // Si no tiene ningún equipo, lo invitamos cordialmente a crear uno
+      return (
+        <div className="py-12 text-center max-w-xl mx-auto">
+          <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-800">Se requiere un Espacio de Trabajo</h2>
+          <p className="text-slate-500 text-sm mt-2">
+            Para visualizar el tablero Kanban, primero debes crear o unirte a un equipo en la sección de <strong>Espacios de Trabajo</strong>.
+          </p>
+        </div>
+      );
     }
+  }
 
-    // Movimiento de una columna a otra
-    const startTaskIds = Array.from(startColumn.taskIds);
-    startTaskIds.splice(source.index, 1);
-    const newStart = { ...startColumn, taskIds: startTaskIds };
+  // 2. Buscamos los proyectos que viven dentro de este Workspace específico
+  const projects = await prisma.project.findMany({
+    where: { workspaceId: activeWorkspaceId },
+    select: { id: true, name: true }
+  });
 
-    const finishTaskIds = Array.from(finishColumn.taskIds);
-    finishTaskIds.splice(destination.index, 0, draggableId);
-    const newFinish = { ...finishColumn, taskIds: finishTaskIds };
+  if (projects.length === 0) {
+    return (
+      <div className="py-12 text-center max-w-xl mx-auto">
+        <FolderKanban className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-slate-800">No hay proyectos activos</h2>
+        <p className="text-slate-500 text-sm mt-2">
+          Este espacio de trabajo está listo. Ve a la sección de proyectos para inicializar el primer repositorio de tareas del equipo.
+        </p>
+      </div>
+    );
+  }
 
-    setData({ ...data, columns: { ...data.columns, [newStart.id]: newStart, [newFinish.id]: newFinish } });
+  // 3. Determinamos qué proyecto está activo (el de la URL o el primero por defecto)
+  const activeProjectId = params.projectId || projects[0].id;
+  const activeProjectName = projects.find(p => p.id === activeProjectId)?.name || projects[0].name;
+
+  // 4. Traemos todas las tareas de ese proyecto ordenadas por su posición en el Kanban
+  const tasks = await prisma.task.findMany({
+    where: { projectId: activeProjectId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      position: true,
+    },
+    orderBy: {
+      position: "asc" // Crucial para mantener el orden del ordenamiento
+    }
+  });
+
+  // 5. La Estrategia: Agrupamos las tareas por su TaskStatus en el servidor (Complejidad O(n))
+  const groupedTasks = {
+    TODO: [] as typeof tasks,
+    IN_PROGRESS: [] as typeof tasks,
+    IN_REVIEW: [] as typeof tasks,
+    DONE: [] as typeof tasks,
   };
 
-  // Evitamos renderizar hasta que el cliente esté montado (Regla de oro de DnD en Next.js)
-  if (!isMounted) return null;
+  tasks.forEach((task) => {
+    if (groupedTasks[task.status]) {
+      groupedTasks[task.status].push(task);
+    }
+  });
 
   return (
-    <div className="space-y-6 flex flex-col h-full">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Predicción de Demanda - Olist</h1>
-        <p className="text-slate-500 mt-2">Tablero interactivo de progreso del proyecto</p>
+    <div className="space-y-6">
+      {/* Encabezado del Tablero */}
+      <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Proyecto Activo</span>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 mt-0.5">{activeProjectName}</h1>
+        </div>
       </div>
 
-      {/* 3. El Contexto que envuelve todo el tablero */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start flex-1">
-          
-          {data.columnOrder.map((columnId) => {
-            const column = data.columns[columnId as keyof typeof data.columns];
-            const tasks = column.taskIds.map((taskId) => data.tasks[taskId as keyof typeof data.tasks]);
-
-            return (
-              <div key={column.id} className="bg-slate-100 p-4 rounded-xl flex flex-col min-h-[500px]">
-                <h3 className="font-semibold text-slate-700 mb-4 flex items-center justify-between">
-                  {column.title} 
-                  <span className="bg-slate-200 text-xs px-2 py-1 rounded-full">{tasks.length}</span>
-                </h3>
-
-                {/* 4. La Zona Soltable (Columna) */}
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div 
-                      ref={provided.innerRef} 
-                      {...provided.droppableProps}
-                      className={`flex-1 transition-colors rounded-lg ${snapshot.isDraggingOver ? 'bg-slate-200/50' : ''}`}
-                    >
-                      {tasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="mb-3"
-                              style={{ ...provided.draggableProps.style }}
-                            >
-                              <Card className={`shadow-sm border-slate-200 cursor-grab active:cursor-grabbing hover:border-blue-300 transition-colors ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 ring-opacity-50 rotate-2' : ''}`}>
-                                <CardHeader className="p-4 pb-2">
-                                  <div className={`text-xs font-bold ${task.color} mb-1 tracking-wider`}>{task.dep}</div>
-                                  <CardTitle className={`text-sm font-medium leading-snug ${column.id === 'DONE' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-                                    {task.title}
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-4 pt-0 flex justify-between items-end mt-4">
-                                  <Badge variant="outline" className={
-                                    task.priority === 'Urgente' ? 'text-red-600 border-red-200 bg-red-50' : 
-                                    task.priority === 'Alta' ? 'text-orange-600 border-orange-200 bg-orange-50' : 'text-slate-500'
-                                  }>
-                                    {task.priority}
-                                  </Badge>
-                                  <Avatar className="w-7 h-7 border-2 border-white shadow-sm"><AvatarFallback className="text-[10px] bg-slate-100 font-medium text-slate-700">CC</AvatarFallback></Avatar>
-                                </CardContent>
-                              </Card>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            );
-          })}
-          
-        </div>
-      </DragDropContext>
+      {/* Inyectamos la estructura limpia lista para pintar en pantalla */}
+      <KanbanBoard projectId={activeProjectId} groupedTasks={groupedTasks} />
     </div>
   );
 }
