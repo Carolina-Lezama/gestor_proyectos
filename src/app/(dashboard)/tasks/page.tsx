@@ -1,96 +1,79 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Clock, MoreHorizontal, Plus } from "lucide-react";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { MyTasksList, MyTaskItem } from "@/components/tasks/MyTasksList";
 
-export default function MyTasksPage() {
-  // Simulamos datos reales basados en la siembra que hicimos en la base de datos
-  const tasks = [
-    { 
-      id: 1, 
-      title: "Diseñar esquema de base de datos relacional", 
-      project: "Predicción de Demanda - Olist", 
-      status: "IN_PROGRESS", 
-      priority: "Urgente", 
-      date: "Hoy" 
+interface TasksPageProps {
+  searchParams: Promise<{
+    workspaceId?: string;
+  }>;
+}
+
+export default async function TasksPage({ searchParams }: TasksPageProps) {
+  // 1. Verificación estricta de seguridad en el servidor
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  const params = await searchParams;
+  let activeWorkspaceId = params.workspaceId;
+
+  // 2. Lógica de Fallback para el Workspace
+  // Si navegamos directamente a /tasks sin un query param, buscamos tu espacio más reciente
+  if (!activeWorkspaceId) {
+    const firstWorkspace = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id },
+      select: { workspaceId: true },
+      orderBy: { joinedAt: "desc" }
+    });
+
+    if (firstWorkspace) {
+      activeWorkspaceId = firstWorkspace.workspaceId;
+    } else {
+      // Si eres un usuario completamente nuevo sin equipos, devolvemos la lista vacía de forma segura
+      return <MyTasksList initialTasks={[]} />;
+    }
+  }
+
+  // 3. Consulta Relacional Optimizada con Prisma
+  // Buscamos tareas asignadas al usuario actual que pertenezcan a proyectos del espacio activo
+  const dbTasks = await prisma.task.findMany({
+    where: {
+      assigneeId: session.user.id, // Filtro por usuario
+      project: {
+        workspaceId: activeWorkspaceId // Filtro por multi-tenant (Workspace)
+      }
     },
-    { 
-      id: 2, 
-      title: "Entrenar modelo base de regresión", 
-      project: "Predicción de Demanda - Olist", 
-      status: "TODO", 
-      priority: "Media", 
-      date: "Mañana" 
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+      project: {
+        select: {
+          name: true // Hacemos un JOIN implícito para traer solo el nombre del proyecto
+        }
+      }
     },
-    { 
-      id: 3, 
-      title: "Extraer y limpiar el dataset de Olist", 
-      project: "Predicción de Demanda - Olist", 
-      status: "DONE", 
-      priority: "Alta", 
-      date: "Completado" 
-    },
-  ];
+    orderBy: {
+      createdAt: "desc" // Las tareas más nuevas aparecen primero en la agenda
+    }
+  });
 
-  return (
-    <div className="max-w-5xl mx-auto py-8">
-      {/* Cabecera */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mis Tareas</h1>
-          <p className="text-slate-500 mt-2">Gestiona tus asignaciones personales en todos los espacios de trabajo.</p>
-        </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
-          <Plus className="w-4 h-4" /> Nueva Tarea
-        </Button>
-      </div>
+  // 4. Adaptación estricta de tipos para el componente de cliente
+  const formattedTasks: MyTaskItem[] = dbTasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+    dueDate: task.dueDate,
+    project: {
+      name: task.project.name
+    }
+  }));
 
-      {/* Lista de Tareas */}
-      <Card className="shadow-sm border-slate-200 overflow-hidden">
-        <div className="divide-y divide-slate-100">
-          {tasks.map((task) => (
-            <div key={task.id} className="p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 transition-colors group gap-4">
-              
-              {/* Información de la tarea */}
-              <div className="flex items-start sm:items-center gap-4">
-                <div className="mt-1 sm:mt-0">
-                  {task.status === "DONE" ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  ) : task.status === "IN_PROGRESS" ? (
-                    <Clock className="w-5 h-5 text-amber-500" />
-                  ) : (
-                    <Circle className="w-5 h-5 text-slate-300" />
-                  )}
-                </div>
-                <div>
-                  <h3 className={`font-medium ${task.status === 'DONE' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                    {task.title}
-                  </h3>
-                  <span className="text-xs text-slate-500">{task.project}</span>
-                </div>
-              </div>
-              
-              {/* Metadatos y Acciones */}
-              <div className="flex items-center gap-4 sm:gap-6 ml-9 sm:ml-0">
-                <Badge variant="outline" className={`
-                  ${task.priority === 'Urgente' ? 'text-red-600 border-red-200 bg-red-50' : ''}
-                  ${task.priority === 'Alta' ? 'text-orange-600 border-orange-200 bg-orange-50' : ''}
-                  ${task.priority === 'Media' ? 'text-blue-600 border-blue-200 bg-blue-50' : ''}
-                `}>
-                  {task.priority}
-                </Badge>
-                <span className="text-sm font-medium text-slate-500 w-20 text-left sm:text-right">
-                  {task.date}
-                </span>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <MoreHorizontal className="w-4 h-4 text-slate-400" />
-                </Button>
-              </div>
-
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
+  // 5. Renderizado inmediato con los datos listos
+  return <MyTasksList initialTasks={formattedTasks} />;
 }

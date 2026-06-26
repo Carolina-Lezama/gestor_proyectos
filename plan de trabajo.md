@@ -116,8 +116,6 @@ El Selector Global: ¿Recuerdas ese botón estático en la barra superior (Dashb
 
 - **Semilla (Seed):** Escribir un script en Prisma para poblar la base de datos con datos falsos (usuarios de prueba, proyectos aleatorios). Esto es vital para probar la interfaz sin tener que crear todo a mano.
 
+¿Cuál es el siguiente paso técnico que te gustaría abordar? Podríamos conectar la sección de Configuración o empezar a estructurar la lógica para los paneles de estadísticas y gráficos del Dashboard principal.
 
-
-
-
-
+arreglar los errores del selector
