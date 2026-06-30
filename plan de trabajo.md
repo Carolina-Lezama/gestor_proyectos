@@ -23,6 +23,14 @@ Nadie entra al sistema sin permiso, y nadie ve los proyectos de otro equipo.
 - **Middleware:** Proteger las rutas de Next.js para que redirijan al login si el usuario no está autenticado.
 - **Lógica de Autorización:** Asegurar que las consultas a la base de datos siempre filtren por el `Workspace` actual.
 
+
+
+
+
+
+
+
+
 ### Fase 4: Operaciones Core y Server Actions (El Motor)
 
 Aquí empezamos a dar vida a la aplicación manejando el estado del servidor.
@@ -54,16 +62,19 @@ Aquí es donde cruzamos el desarrollo web con el mundo de los datos. Esta fase e
 
 ---
 
-# BACK END
 
-Fase 1: Autenticación y Control de Sesiones (El Candado)
-Antes de pedirle datos a la base de datos, el sistema necesita saber quién los está pidiendo para aplicar la arquitectura Multi-Tenant que diseñamos.
 
-Paso 1.1: Instalar Auth.js (NextAuth v5). Es el estándar de seguridad en Next.js.
 
-Paso 1.2: Configurar el Adaptador de Prisma. Esto conectará Auth.js con tu tabla User de PostgreSQL automáticamente.
 
-Paso 1.3: Proteger Rutas (Middleware). Crearemos un archivo middleware.ts para que nadie pueda entrar a la carpeta /(dashboard) sin tener una sesión activa, redirigiéndolos a la Landing Page o al Login.
+
+
+
+
+
+
+
+
+
 
 Paso 1.4: Conectar el Login/Register. Haremos que tus formularios visuales de autenticación verifiquen las credenciales contra la base de datos.
 
@@ -116,18 +127,7 @@ El Selector Global: ¿Recuerdas ese botón estático en la barra superior (Dashb
 
 - **Semilla (Seed):** Escribir un script en Prisma para poblar la base de datos con datos falsos (usuarios de prueba, proyectos aleatorios). Esto es vital para probar la interfaz sin tener que crear todo a mano.
 
-estructurar la lógica para los paneles de estadísticas y gráficos del Dashboard principal.
 
-2. Diseñar el Componente de Formulario (ProfileForm.tsx)
-   Qué haremos: Crearemos un Client Component ("use client") con los campos de texto necesarios. Este componente gestionará los estados de carga (el botón dirá "Guardando..." con un spinner) y mostrará mensajes de éxito o error al comunicarse con el Server Action.
 
-Justificación: Al separar el formulario en un componente de cliente, le damos una experiencia interactiva al usuario sin recargar toda la página (SPA feel), reteniendo la usabilidad rápida que hemos construido hasta ahora.
 
-3. El Orquestador de Servidor (/settings/page.tsx)
-   Qué haremos: Construiremos la página principal de configuración. Este Server Component leerá el ID del usuario directamente de la sesión, hará una consulta a PostgreSQL para traer sus datos actuales (name, email, phone, city) y se los inyectará al formulario del Paso 2.
-
-Justificación: Esto es lo que se conoce como Server-Side Rendering (SSR) de datos. Al inyectar los datos desde el servidor, el formulario aparecerá pre-llenado en milisegundos, evitando los molestos "parpadeos" o estados de carga vacíos que ocurren cuando se hace con useEffect en React tradicional.
-
-Una vez que terminemos el perfil del usuario, la base estará lista para que en el futuro agreguemos una pestaña de "Configuración del Espacio de Trabajo" (para invitar miembros o cambiar el nombre del equipo).
-
-¿Me das luz verde para comenzar de inmediato con el Paso 1 y 2 y construir el motor de actualización?
+arreglar la dificultad o preferencia de las tareas

@@ -8,12 +8,11 @@ import {
   User, 
   FolderKanban, 
   Users, 
-  Settings, 
   BarChart3, 
-  Calendar,
-  LogOut // <-- 1. Agregamos el ícono de salida
+  Calendar, // <-- Lo usaremos cuando hagamos este módulo
+  LogOut 
 } from "lucide-react";
-import { logoutUser } from "@/actions/auth.actions"; // <-- 2. Importamos la acción de servidor
+import { logoutUser } from "@/actions/auth.actions"; 
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -28,9 +27,10 @@ export function DashboardSidebar() {
     { href: "/profile", icon: User, label: "Perfil" },
   ];
 
+
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col hidden md:flex">
-      <div className="h-16 flex items-center px-6 border-b border-slate-200">
+    <aside className="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex h-screen sticky top-0">
+      <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
         <span className="text-xl font-bold text-slate-900 tracking-tight">TaskFlow Pro</span>
       </div>
       
@@ -56,16 +56,21 @@ export function DashboardSidebar() {
           })}
         </nav>
 
-        {/* Zona inferior aislada */}
-        <div className="p-4 border-t border-slate-100 space-y-1">
+        {/* Zona inferior aislada (Perfil y Salida) */}
+        <div className="p-4 border-t border-slate-100 space-y-1 bg-slate-50/50">
+          
+          {/* Movimos el Perfil aquí abajo, reemplazando a Settings */}
           <Link 
-            href="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            href="/profile" 
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${
+              pathname === "/profile"
+                ? "bg-blue-50 text-blue-700"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
           >
-            <Settings className="w-5 h-5" /> Configuración
+            <User className="w-5 h-5" /> Mi Perfil
           </Link>
           
-          {/* 3. Formulario con el Server Action importado */}
           <form action={logoutUser}>
             <button 
               type="submit" 
