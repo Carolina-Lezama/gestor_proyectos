@@ -1,10 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers"; // <-- Nuevo import
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
+import { ProjectSelector } from "@/components/kanban/ProjectSelector"; // <-- Nuevo Import
 import { Card, CardContent } from "@/components/ui/card";
 import { FolderKanban, AlertCircle } from "lucide-react";
-import Link from "lucide-react";
+import Link from "next/link";
 
 interface DashboardProps {
   searchParams: Promise<{
@@ -20,17 +22,33 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const params = await searchParams;
   let activeWorkspaceId = params.workspaceId;
 
-  // 1. Si el usuario entra al raíz sin especificar equipo, buscamos su primer espacio disponible
+  // 1. LECTURA DE COOKIE (Memoria a corto plazo)
+  if (!activeWorkspaceId) {
+    const cookieStore = await cookies();
+    const cookieWorkspaceId = cookieStore.get("activeWorkspaceId")?.value;
+
+    if (cookieWorkspaceId) {
+      // Validación de seguridad: Comprobar que la cookie no es obsoleta y el usuario sigue en el equipo
+      const hasAccess = await prisma.workspaceMember.findUnique({
+        where: {
+          userId_workspaceId: { userId: session.user.id, workspaceId: cookieWorkspaceId }
+        }
+      });
+      if (hasAccess) activeWorkspaceId = cookieWorkspaceId;
+    }
+  }
+
+  // 2. FALLBACK ABSOLUTO (Si no hay URL y no hay Cookie, buscamos el primer equipo)
   if (!activeWorkspaceId) {
     const firstWorkspace = await prisma.workspaceMember.findFirst({
       where: { userId: session.user.id },
-      select: { workspaceId: true }
+      select: { workspaceId: true },
+      orderBy: { joinedAt: "desc" }
     });
     
     if (firstWorkspace) {
       activeWorkspaceId = firstWorkspace.workspaceId;
     } else {
-      // Si no tiene ningún equipo, lo invitamos cordialmente a crear uno
       return (
         <div className="py-12 text-center max-w-xl mx-auto">
           <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
@@ -43,10 +61,11 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     }
   }
 
-  // 2. Buscamos los proyectos que viven dentro de este Workspace específico
+// 2. Extraemos TODOS los proyectos vinculados a este Workspace
   const projects = await prisma.project.findMany({
     where: { workspaceId: activeWorkspaceId },
-    select: { id: true, name: true }
+    select: { id: true, name: true },
+    orderBy: { createdAt: "desc" }
   });
 
   if (projects.length === 0) {
@@ -96,17 +115,24 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     }
   });
 
-  return (
+return (
     <div className="space-y-6">
-      {/* Encabezado del Tablero */}
+      {/* Encabezado del Tablero con el Selector Integrado */}
       <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Proyecto Activo</span>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 mt-0.5">{activeProjectName}</h1>
+          <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Panel de Control</span>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 mt-0.5">Línea de Trabajo</h1>
         </div>
+        
+        {/* Renderizado del componente interactivo pasando los datos del servidor */}
+        <ProjectSelector 
+          workspaceId={activeWorkspaceId} 
+          activeProjectId={activeProjectId} 
+          projects={projects} 
+        />
       </div>
 
-      {/* Inyectamos la estructura limpia lista para pintar en pantalla */}
+      {/* Tablero Kanban */}
       <KanbanBoard projectId={activeProjectId} groupedTasks={groupedTasks} />
     </div>
   );

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers"; // <-- Nuevo import
 import { MyTasksList, MyTaskItem } from "@/components/tasks/MyTasksList";
 
 interface TasksPageProps {
@@ -10,17 +11,26 @@ interface TasksPageProps {
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
-  // 1. Verificación estricta de seguridad en el servidor
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
+  if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
   let activeWorkspaceId = params.workspaceId;
 
-  // 2. Lógica de Fallback para el Workspace
-  // Si navegamos directamente a /tasks sin un query param, buscamos tu espacio más reciente
+  // 1. LECTURA DE COOKIE
+  if (!activeWorkspaceId) {
+    const cookieStore = await cookies();
+    const cookieWorkspaceId = cookieStore.get("activeWorkspaceId")?.value;
+
+    if (cookieWorkspaceId) {
+      const hasAccess = await prisma.workspaceMember.findUnique({
+        where: { userId_workspaceId: { userId: session.user.id, workspaceId: cookieWorkspaceId } }
+      });
+      if (hasAccess) activeWorkspaceId = cookieWorkspaceId;
+    }
+  }
+
+  // 2. FALLBACK ABSOLUTO
   if (!activeWorkspaceId) {
     const firstWorkspace = await prisma.workspaceMember.findFirst({
       where: { userId: session.user.id },
@@ -31,7 +41,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     if (firstWorkspace) {
       activeWorkspaceId = firstWorkspace.workspaceId;
     } else {
-      // Si eres un usuario completamente nuevo sin equipos, devolvemos la lista vacía de forma segura
       return <MyTasksList initialTasks={[]} />;
     }
   }

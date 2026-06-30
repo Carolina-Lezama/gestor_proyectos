@@ -1,9 +1,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers"; // <-- Nuevo import
 import { ProjectList, ProjectItem } from "@/components/projects/ProjectList";
 
-// Next.js 15+ maneja searchParams como una Promesa
 interface ProjectsPageProps {
   searchParams: Promise<{
     workspaceId?: string;
@@ -11,16 +11,26 @@ interface ProjectsPageProps {
 }
 
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
-  // 1. Validación de sesión segura en el Edge/Server
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
+  if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
   let activeWorkspaceId = params.workspaceId;
 
-  // 2. Lógica de Contexto: Si no hay un workspace en la URL, buscamos el primero
+  // 1. LECTURA DE COOKIE
+  if (!activeWorkspaceId) {
+    const cookieStore = await cookies();
+    const cookieWorkspaceId = cookieStore.get("activeWorkspaceId")?.value;
+
+    if (cookieWorkspaceId) {
+      const hasAccess = await prisma.workspaceMember.findUnique({
+        where: { userId_workspaceId: { userId: session.user.id, workspaceId: cookieWorkspaceId } }
+      });
+      if (hasAccess) activeWorkspaceId = cookieWorkspaceId;
+    }
+  }
+
+  // 2. FALLBACK ABSOLUTO
   if (!activeWorkspaceId) {
     const firstWorkspace = await prisma.workspaceMember.findFirst({
       where: { userId: session.user.id },
@@ -31,11 +41,9 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
     if (firstWorkspace) {
       activeWorkspaceId = firstWorkspace.workspaceId;
     } else {
-      // Si el usuario es completamente nuevo y no tiene ningún equipo, mostramos la vista vacía
       return <ProjectList activeWorkspaceId="" initialProjects={[]} />;
     }
   }
-
   // 3. Validación de Seguridad y Extracción de Miembros
   // Nos aseguramos de que el usuario no intente acceder a un workspace que no le pertenece
   const workspaceAccess = await prisma.workspaceMember.findUnique({

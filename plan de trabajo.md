@@ -116,6 +116,18 @@ El Selector Global: ¿Recuerdas ese botón estático en la barra superior (Dashb
 
 - **Semilla (Seed):** Escribir un script en Prisma para poblar la base de datos con datos falsos (usuarios de prueba, proyectos aleatorios). Esto es vital para probar la interfaz sin tener que crear todo a mano.
 
-¿Cuál es el siguiente paso técnico que te gustaría abordar? Podríamos conectar la sección de Configuración o empezar a estructurar la lógica para los paneles de estadísticas y gráficos del Dashboard principal.
+estructurar la lógica para los paneles de estadísticas y gráficos del Dashboard principal.
 
-arreglar los errores del selector
+2. Diseñar el Componente de Formulario (ProfileForm.tsx)
+   Qué haremos: Crearemos un Client Component ("use client") con los campos de texto necesarios. Este componente gestionará los estados de carga (el botón dirá "Guardando..." con un spinner) y mostrará mensajes de éxito o error al comunicarse con el Server Action.
+
+Justificación: Al separar el formulario en un componente de cliente, le damos una experiencia interactiva al usuario sin recargar toda la página (SPA feel), reteniendo la usabilidad rápida que hemos construido hasta ahora.
+
+3. El Orquestador de Servidor (/settings/page.tsx)
+   Qué haremos: Construiremos la página principal de configuración. Este Server Component leerá el ID del usuario directamente de la sesión, hará una consulta a PostgreSQL para traer sus datos actuales (name, email, phone, city) y se los inyectará al formulario del Paso 2.
+
+Justificación: Esto es lo que se conoce como Server-Side Rendering (SSR) de datos. Al inyectar los datos desde el servidor, el formulario aparecerá pre-llenado en milisegundos, evitando los molestos "parpadeos" o estados de carga vacíos que ocurren cuando se hace con useEffect en React tradicional.
+
+Una vez que terminemos el perfil del usuario, la base estará lista para que en el futuro agreguemos una pestaña de "Configuración del Espacio de Trabajo" (para invitar miembros o cambiar el nombre del equipo).
+
+¿Me das luz verde para comenzar de inmediato con el Paso 1 y 2 y construir el motor de actualización?

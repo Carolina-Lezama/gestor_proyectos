@@ -45,3 +45,31 @@ export async function createWorkspace(formData: FormData) {
     return { error: "Ocurrió un error al crear el equipo." };
   }
 }
+
+// Añade esto al final de src/actions/workspace.actions.ts
+import { cookies } from "next/headers";
+
+export async function setActiveWorkspaceCookie(workspaceId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "No autorizado." };
+  }
+
+  try {
+    const cookieStore = await cookies();
+    
+    // Guardamos el ID en una cookie segura que expira en 30 días
+    cookieStore.set("activeWorkspaceId", workspaceId, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 días
+      httpOnly: true, // Protección contra ataques XSS
+      secure: process.env.NODE_NODE === "production",
+      sameSite: "lax",
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error al setear la cookie de workspace:", error);
+    return { error: "No se pudo guardar la persistencia del equipo." };
+  }
+}

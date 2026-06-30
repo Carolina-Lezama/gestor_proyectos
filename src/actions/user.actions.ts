@@ -19,6 +19,14 @@ export async function updateUserProfile(formData: FormData) {
     return { error: "El nombre no puede estar vacío." };
   }
 
+    if (!phone || phone.trim() === "") {
+    return { error: "El numero de telefono no puede estar vacío." };
+  }
+
+    if (!city || city.trim() === "") {
+    return { error: "La ciudad no puede estar vacío." };
+  }
+
   try {
     // Actualizamos la base de datos con los nuevos campos
     await prisma.user.update({
