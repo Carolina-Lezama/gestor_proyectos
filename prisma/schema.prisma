@@ -107,6 +107,20 @@ model Task {
   assigneeId  String?
   assignee    User?     @relation("AssignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
   comments    Comment[]
+  subtasks    Subtask[]
+}
+
+model Subtask {
+  id          String   @id @default(cuid())
+  title       String
+  isCompleted Boolean  @default(false)
+  
+  // Relación: Si se borra la tarea padre, las subtareas se borran en cascada automáticamente
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // 6. Modelo de Comentarios (Interacción en la tarea)

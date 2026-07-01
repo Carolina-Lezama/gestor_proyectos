@@ -23,14 +23,6 @@ Nadie entra al sistema sin permiso, y nadie ve los proyectos de otro equipo.
 - **Middleware:** Proteger las rutas de Next.js para que redirijan al login si el usuario no está autenticado.
 - **Lógica de Autorización:** Asegurar que las consultas a la base de datos siempre filtren por el `Workspace` actual.
 
-
-
-
-
-
-
-
-
 ### Fase 4: Operaciones Core y Server Actions (El Motor)
 
 Aquí empezamos a dar vida a la aplicación manejando el estado del servidor.
@@ -61,20 +53,6 @@ Aquí es donde cruzamos el desarrollo web con el mundo de los datos. Esta fase e
 - **Pruebas (Testing):** Escribir tests para asegurar que si un miembro es eliminado de un equipo, no pueda seguir viendo las tareas.
 
 ---
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 Paso 1.4: Conectar el Login/Register. Haremos que tus formularios visuales de autenticación verifiquen las credenciales contra la base de datos.
 
@@ -126,8 +104,3 @@ La Interfaz de Usuario (/workspaces): Haremos una pantalla donde veas las tarjet
 El Selector Global: ¿Recuerdas ese botón estático en la barra superior (DashboardTopbar) que dice "Data & Engineering Team"? Lo conectaremos a la base de datos para que el usuario pueda alternar entre sus diferentes equipos en tiempo real.
 
 - **Semilla (Seed):** Escribir un script en Prisma para poblar la base de datos con datos falsos (usuarios de prueba, proyectos aleatorios). Esto es vital para probar la interfaz sin tener que crear todo a mano.
-
-
-
-
-arreglar la dificultad o preferencia de las tareas

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { TaskStatus } from "@prisma/client";
+import { Priority } from "@prisma/client";
 
 export async function createTask(formData: FormData) {
   // 1. Verificación de seguridad
@@ -86,8 +87,6 @@ export async function updateTasksOrder(tasksToUpdate: TaskOrderUpdate[]) {
   }
 }
 
-// Añade esto al final de src/actions/task.actions.ts
-
 export async function updateTaskStatus(taskId: string, newStatus: TaskStatus) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -115,5 +114,128 @@ export async function updateTaskStatus(taskId: string, newStatus: TaskStatus) {
   } catch (error) {
     console.error("Error al actualizar estado de la tarea:", error);
     return { error: "No se pudo actualizar la tarea en la base de datos." };
+  }
+}
+
+// ==========================================
+// 1. DETALLES DE LA TAREA (Fecha y Prioridad)
+// ==========================================
+export async function updateTaskDetails(
+  taskId: string, 
+  data: { 
+    priority?: Priority; // <-- 2. Usamos el tipo exacto en lugar de 'string'
+    dueDate?: Date | null; 
+    description?: string;
+  }
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  try {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        priority: data.priority,
+        dueDate: data.dueDate,
+        description: data.description,
+      }
+    });
+    
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: "Ocurrió un error al actualizar la tarea." };
+  }
+}
+
+// ==========================================
+// 2. GESTIÓN DE SUBTAREAS (Checklist)
+// ==========================================
+export async function createSubtask(taskId: string, title: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+  if (!title.trim()) return { error: "El título no puede estar vacío." };
+
+  try {
+    const subtask = await prisma.subtask.create({
+      data: { title, taskId }
+    });
+    revalidatePath("/", "layout");
+    return { success: true, subtask };
+  } catch (error) {
+    return { error: "Error al crear la subtarea." };
+  }
+}
+
+export async function toggleSubtask(subtaskId: string, isCompleted: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  try {
+    await prisma.subtask.update({
+      where: { id: subtaskId },
+      data: { isCompleted }
+    });
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: "Error al actualizar la subtarea." };
+  }
+}
+
+export async function deleteSubtask(subtaskId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  try {
+    await prisma.subtask.delete({ where: { id: subtaskId } });
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: "Error al eliminar la subtarea." };
+  }
+}
+
+// ==========================================
+// 3. GESTIÓN DE COMENTARIOS (Feed de Actividad)
+// ==========================================
+export async function addComment(taskId: string, content: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+  if (!content.trim()) return { error: "El comentario no puede estar vacío." };
+
+  try {
+    const comment = await prisma.comment.create({
+      data: {
+        content,
+        taskId,
+        userId: session.user.id // Vinculamos el comentario al usuario que lo escribe
+      }
+    });
+    revalidatePath("/", "layout");
+    return { success: true, comment };
+  } catch (error) {
+    return { error: "Error al publicar el comentario." };
+  }
+}
+
+export async function deleteComment(commentId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  try {
+    // Primero verificamos que el comentario pertenezca al usuario que intenta borrarlo
+    // (Por seguridad, nadie debería poder borrar los comentarios de otros)
+    const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+    
+    if (comment?.userId !== session.user.id) {
+      return { error: "No tienes permiso para borrar este comentario." };
+    }
+
+    await prisma.comment.delete({ where: { id: commentId } });
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: "Error al eliminar el comentario." };
   }
 }

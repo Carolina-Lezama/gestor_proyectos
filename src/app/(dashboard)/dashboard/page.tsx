@@ -1,12 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers"; // <-- Nuevo import
+import { cookies } from "next/headers";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
-import { ProjectSelector } from "@/components/kanban/ProjectSelector"; // <-- Nuevo Import
-import { Card, CardContent } from "@/components/ui/card";
+import { ProjectSelector } from "@/components/kanban/ProjectSelector";
 import { FolderKanban, AlertCircle } from "lucide-react";
-import Link from "next/link";
 
 interface DashboardProps {
   searchParams: Promise<{
@@ -28,7 +26,6 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     const cookieWorkspaceId = cookieStore.get("activeWorkspaceId")?.value;
 
     if (cookieWorkspaceId) {
-      // Validación de seguridad: Comprobar que la cookie no es obsoleta y el usuario sigue en el equipo
       const hasAccess = await prisma.workspaceMember.findUnique({
         where: {
           userId_workspaceId: { userId: session.user.id, workspaceId: cookieWorkspaceId }
@@ -38,7 +35,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     }
   }
 
-  // 2. FALLBACK ABSOLUTO (Si no hay URL y no hay Cookie, buscamos el primer equipo)
+  // 2. FALLBACK ABSOLUTO 
   if (!activeWorkspaceId) {
     const firstWorkspace = await prisma.workspaceMember.findFirst({
       where: { userId: session.user.id },
@@ -61,7 +58,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     }
   }
 
-// 2. Extraemos TODOS los proyectos vinculados a este Workspace
+  // 3. Extraemos TODOS los proyectos vinculados a este Workspace
   const projects = await prisma.project.findMany({
     where: { workspaceId: activeWorkspaceId },
     select: { id: true, name: true },
@@ -80,28 +77,29 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     );
   }
 
-  // 3. Determinamos qué proyecto está activo (el de la URL o el primero por defecto)
+  // 4. Determinamos qué proyecto está activo
   const activeProjectId = params.projectId || projects[0].id;
-  const activeProjectName = projects.find(p => p.id === activeProjectId)?.name || projects[0].name;
 
-  // 4. Traemos todas las tareas de ese proyecto ordenadas por su posición en el Kanban
+  // 5. CORRECCIÓN: Traemos las tareas usando 'include' para las relaciones anidadas
   const tasks = await prisma.task.findMany({
     where: { projectId: activeProjectId },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      status: true,
-      priority: true,
-      dueDate: true,
-      position: true,
+    include: {
+      subtasks: {
+        orderBy: { createdAt: 'asc' } // Ordenamos el checklist por orden de creación
+      }, 
+      comments: {
+        include: { 
+          user: { select: { name: true } } // Extraemos el nombre del autor del comentario
+        },
+        orderBy: { createdAt: 'asc' }
+      }
     },
-    orderBy: {
-      position: "asc" // Crucial para mantener el orden del ordenamiento
+    orderBy: { 
+      position: "asc" 
     }
   });
 
-  // 5. La Estrategia: Agrupamos las tareas por su TaskStatus en el servidor (Complejidad O(n))
+  // 6. Agrupamos las tareas
   const groupedTasks = {
     TODO: [] as typeof tasks,
     IN_PROGRESS: [] as typeof tasks,
@@ -115,7 +113,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     }
   });
 
-return (
+  return (
     <div className="space-y-6">
       {/* Encabezado del Tablero con el Selector Integrado */}
       <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -124,7 +122,6 @@ return (
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 mt-0.5">Línea de Trabajo</h1>
         </div>
         
-        {/* Renderizado del componente interactivo pasando los datos del servidor */}
         <ProjectSelector 
           workspaceId={activeWorkspaceId} 
           activeProjectId={activeProjectId} 
@@ -132,8 +129,12 @@ return (
         />
       </div>
 
-      {/* Tablero Kanban */}
-      <KanbanBoard projectId={activeProjectId} groupedTasks={groupedTasks} />
+      {/* Tablero Kanban. CORRECCIÓN: Inyectamos el session.user.id real */}
+      <KanbanBoard 
+        projectId={activeProjectId} 
+        groupedTasks={groupedTasks} 
+        currentUserId={session.user.id} 
+      />
     </div>
   );
 }
